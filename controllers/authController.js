@@ -1,6 +1,8 @@
 import bcrypt from 'bcrypt';
-import {User} from '../models/User.js';
+import { User } from '../models/User.js';
+import jwt from 'jsonwebtoken';
 
+//Day->2 : 
 export const registerUser = async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -55,4 +57,56 @@ export const registerUser = async (req, res) => {
             message: "Server Error..."
         })
     }
+}
+
+//Day-3 : ->
+export const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({
+                message: "(inside  controllers loginContr) Email and password are required"
+            })
+        }
+
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.send(400).json({
+                message: "User does not exist, register first..!"
+            })
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).send({
+                message: "Incorrect password !!"
+            })
+        }
+
+        //Generate tokens: 
+        const accessToken = jwt.sign({ id: user._id, role: user.role }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+
+        const refreshToken = jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '1d' });
+
+        const userObject = user.toObject();
+        const userData = {};
+        for (const key in userObject) {
+            if (key !== 'password') {
+                userData[key] = user[key];
+            }
+        }
+
+        return res.status(200).json(
+            { message: "Login successfull", user: userData, accessToken, refreshToken }
+        );
+
+    } catch (error) {
+        console.log("Login Error: -> ", error);
+        return res.status(400).json({
+            message: "Login Error"
+        })
+    }
+
 }
