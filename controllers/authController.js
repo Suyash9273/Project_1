@@ -89,6 +89,9 @@ export const loginUser = async (req, res) => {
         const accessToken = jwt.sign({ id: user._id, role: user.role }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
 
         const refreshToken = jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '1d' });
+        //save refreshToken in DB
+        user.refreshToken = refreshToken;
+        await user.save();
 
         const userObject = user.toObject();
         const userData = {};

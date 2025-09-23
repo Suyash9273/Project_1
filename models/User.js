@@ -24,7 +24,12 @@ const userSchema = mongoose.Schema({
         type: String,
         enum: ['user', 'moderator', 'admin'],
         default: 'user'
-    }
+    }, 
+    refreshToken: {
+        type: String,
+    }, //New field added on day-5
+    resetPasswordToken: {type: String},
+    resetPasswordExpire: {type: Date},
 }, {timestamps: true});
 
 export const User = mongoose.model('User', userSchema);

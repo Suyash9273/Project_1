@@ -1,10 +1,14 @@
 import express from 'express';
 import { registerUser, loginUser } from '../controllers/authController.js';
 import { authenticate, authorize } from '../middleware/authMiddleware.js';
+import { refreshAccessToken, logoutUser } from '../controllers/tokenController.js';
+
 const router = express.Router();
 
 router.post('/register', registerUser);
 router.post('/login', loginUser);
+router.post('/refresh', refreshAccessToken);
+router.post('/logout', logoutUser);
 
 //Protected route for any authenticated user : -> 
 router.get('/me', authenticate, (req, res) => {
