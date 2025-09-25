@@ -3,6 +3,8 @@ import { User } from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { passwordHasher } from '../utils/passwordUtils.js';
+import { sendEmail } from '../utils/sendEmail.js';
+
 //Day->2 : 
 export const registerUser = async (req, res) => {
     try {
@@ -120,8 +122,8 @@ export const forgotPassword = async (req, res) => {
     const { email } = req.body;
 
     try {
-        const user = await User.findOne({email});
-        if(!user) return res.status(404).json({message: "(inside Controllers/authCon/forgPass) User not found"});
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: "(inside Controllers/authCon/forgPass) User not found" });
 
         // Generate reset token : 
         const resetToken = crypto.randomBytes(32).toString('hex');
@@ -130,17 +132,26 @@ export const forgotPassword = async (req, res) => {
 
         // Save hashed token & expiry (15 min) : 
         user.resetPasswordToken = hashedToken;
-        user.resetPasswordExpire = Date.now() + 15*60*1000;
+        user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
 
         await user.save();
 
         // Generate reset URL (for now return in response...)
         const resetUrl = `http://localhost:3000/api/auth/reset-password/${resetToken}`;
 
-        return res.json({
-            message: 'Password reset link generated',
-            resetUrl: resetUrl,
-        });
+        const messageHtml = `
+      <h2>Password Reset Requested</h2>
+      <p>Click the link below to reset your password. This link is valid for 15 minutes.</p>
+      <a href="${resetUrl}">${resetUrl}</a>
+    `;
+
+        await sendEmail({
+      to: user.email,
+      subject: 'Password Reset Request',
+      html: messageHtml,
+      text: `Reset your password using this link: ${resetUrl}`,
+    });
+    res.json({ message: 'Password reset email sent' });
 
     } catch (error) {
         return res.status(500).json(
@@ -153,8 +164,8 @@ export const forgotPassword = async (req, res) => {
 
 // Reset Password : -> 
 export const resetPassword = async (req, res) => {
-    const {token} = req.params;
-    const {password} = req.body;
+    const { token } = req.params;
+    const { password } = req.body;
 
     try {
         // Hash the token to compare with DB 
@@ -162,11 +173,11 @@ export const resetPassword = async (req, res) => {
 
         // Find user with valid reset token & not expired : 
         const user = await User.findOne({
-            resetPasswordToken: hashedToken, 
-            resetPasswordExpire: {$gt: Date.now()},
+            resetPasswordToken: hashedToken,
+            resetPasswordExpire: { $gt: Date.now() },
         });
 
-        if(!user) return res.status(400).json({message: "Invalid or expired token"});
+        if (!user) return res.status(400).json({ message: "Invalid or expired token" });
 
         // Set new password : -> 
         user.password = await passwordHasher(password);
@@ -175,7 +186,7 @@ export const resetPassword = async (req, res) => {
 
         await user.save();
 
-        return res.json({message: "Password reset successful"});
+        return res.json({ message: "Password reset successful" });
 
 
     } catch (error) {

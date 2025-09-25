@@ -1,13 +1,20 @@
-import nodemailer from 'nodemailer';
+import { Resend } from "resend";
 
-// Create a transporter for SMTP
-const transporter = nodemailer.createTransport({
-  host: "smtp.example.com",
-  port: 587,
-  secure: false, // upgrade later with STARTTLS
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export const sendEmail = async ({to, subject, html, text}) => {
+  const { data, error } = await resend.emails.send({
+    from: 'Acme <onboarding@resend.dev>',
+    to: [to],
+    subject: subject,
+    html: html,
+    text: text
+  });
+
+  if (error) {
+    return console.error({ error });
+  }
+
+  console.log({ data });
+}
 
