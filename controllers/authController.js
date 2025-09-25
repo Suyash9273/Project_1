@@ -1,7 +1,8 @@
 import bcrypt from 'bcrypt';
 import { User } from '../models/User.js';
 import jwt from 'jsonwebtoken';
-
+import crypto from 'crypto';
+import { passwordHasher } from '../utils/passwordUtils.js';
 //Day->2 : 
 export const registerUser = async (req, res) => {
     try {
@@ -112,4 +113,72 @@ export const loginUser = async (req, res) => {
         })
     }
 
+}
+
+// Day -> 6 : 
+export const forgotPassword = async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        const user = await User.findOne({email});
+        if(!user) return res.status(404).json({message: "(inside Controllers/authCon/forgPass) User not found"});
+
+        // Generate reset token : 
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        //Hash Token before saving to DB
+        const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+        // Save hashed token & expiry (15 min) : 
+        user.resetPasswordToken = hashedToken;
+        user.resetPasswordExpire = Date.now() + 15*60*1000;
+
+        await user.save();
+
+        // Generate reset URL (for now return in response...)
+        const resetUrl = `http://localhost:3000/api/auth/reset-password/${resetToken}`;
+
+        return res.json({
+            message: 'Password reset link generated',
+            resetUrl: resetUrl,
+        });
+
+    } catch (error) {
+        return res.status(500).json(
+            {
+                message: `Server error`, error: error.message
+            }
+        )
+    }
+}
+
+// Reset Password : -> 
+export const resetPassword = async (req, res) => {
+    const {token} = req.params;
+    const {password} = req.body;
+
+    try {
+        // Hash the token to compare with DB 
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+        // Find user with valid reset token & not expired : 
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken, 
+            resetPasswordExpire: {$gt: Date.now()},
+        });
+
+        if(!user) return res.status(400).json({message: "Invalid or expired token"});
+
+        // Set new password : -> 
+        user.password = await passwordHasher(password);
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+
+        await user.save();
+
+        return res.json({message: "Password reset successful"});
+
+
+    } catch (error) {
+        return res.status(500).json({ message: 'Server error', error: err.message });
+    }
 }

@@ -2,6 +2,7 @@ import express from 'express';
 import { registerUser, loginUser } from '../controllers/authController.js';
 import { authenticate, authorize } from '../middleware/authMiddleware.js';
 import { refreshAccessToken, logoutUser } from '../controllers/tokenController.js';
+import { forgotPassword, resetPassword } from '../controllers/authController.js';
 
 const router = express.Router();
 
@@ -9,6 +10,8 @@ router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/refresh', refreshAccessToken);
 router.post('/logout', logoutUser);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-Password/:token', resetPassword);
 
 //Protected route for any authenticated user : -> 
 router.get('/me', authenticate, (req, res) => {
